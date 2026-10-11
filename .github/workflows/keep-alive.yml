@@ -22,86 +22,16 @@ jobs:
   commit:
     if: github.repository == 'GengerLi/GengerLi' && github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    timeout-minutes: 5
     steps:
       - name: Check out the default branch
         uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.repository.default_branch }}
 
-      - name: Check whether the daily cards need updating
-        id: refresh
+      - name: Update the daily activity date and commit once
         env:
-          FORCE_REFRESH: ${{ github.event_name == 'push' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          git fetch origin "$DEFAULT_BRANCH"
-          git reset --hard "origin/$DEFAULT_BRANCH"
-          today="$(TZ=Asia/Shanghai date +%F)"
-          needs_update=true
-          if [[ "${FORCE_REFRESH:-false}" != "true" ]] \
-            && [[ -f .github/daily-activity.txt ]] && [[ "$(cat .github/daily-activity.txt)" == "$today" ]] \
-            && [[ -s profile/stats-light.svg && -s profile/stats-dark.svg ]] \
-            && [[ -s profile/top-langs-light.svg && -s profile/top-langs-dark.svg ]]; then
-            needs_update=false
-          fi
-          echo "needed=$needs_update" >> "$GITHUB_OUTPUT"
-
-      - name: Generate light GitHub stats
-        id: stats_light
-        if: steps.refresh.outputs.needed == 'true'
-        continue-on-error: true
-        uses: stats-organization/github-readme-stats-action@2c498845f71017821efaad14293ebc736156ef21 # v2
-        with:
-          card: stats
-          options: username=GengerLi&show_icons=true&hide_rank=true&hide_border=true&disable_animations=true&card_width=420&locale=cn&title_color=5B65E8&icon_color=5B65E8&text_color=475569&bg_color=F6F8FA
-          path: ${{ runner.temp }}/profile-cards/stats-light.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_error: true
-
-      - name: Generate dark GitHub stats
-        id: stats_dark
-        if: steps.refresh.outputs.needed == 'true'
-        continue-on-error: true
-        uses: stats-organization/github-readme-stats-action@2c498845f71017821efaad14293ebc736156ef21 # v2
-        with:
-          card: stats
-          options: username=GengerLi&show_icons=true&hide_rank=true&hide_border=true&disable_animations=true&card_width=420&locale=cn&theme=tokyonight
-          path: ${{ runner.temp }}/profile-cards/stats-dark.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_error: true
-
-      - name: Generate light language stats
-        id: langs_light
-        if: steps.refresh.outputs.needed == 'true'
-        continue-on-error: true
-        uses: stats-organization/github-readme-stats-action@2c498845f71017821efaad14293ebc736156ef21 # v2
-        with:
-          card: top-langs
-          options: username=GengerLi&layout=compact&langs_count=6&hide_border=true&disable_animations=true&card_width=300&locale=cn&title_color=5B65E8&text_color=475569&bg_color=F6F8FA
-          path: ${{ runner.temp }}/profile-cards/top-langs-light.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_error: true
-
-      - name: Generate dark language stats
-        id: langs_dark
-        if: steps.refresh.outputs.needed == 'true'
-        continue-on-error: true
-        uses: stats-organization/github-readme-stats-action@2c498845f71017821efaad14293ebc736156ef21 # v2
-        with:
-          card: top-langs
-          options: username=GengerLi&layout=compact&langs_count=6&hide_border=true&disable_animations=true&card_width=300&locale=cn&theme=tokyonight
-          path: ${{ runner.temp }}/profile-cards/top-langs-dark.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_error: true
-
-      - name: Update the daily date and cards in one commit
-        env:
-          PROFILE_CARDS_DIR: ${{ runner.temp }}/profile-cards
-          CARDS_READY: ${{ steps.stats_light.outcome == 'success' && steps.stats_dark.outcome == 'success' && steps.langs_light.outcome == 'success' && steps.langs_dark.outcome == 'success' }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         shell: bash
         run: |
           set -euo pipefail
@@ -118,14 +48,6 @@ jobs:
             mkdir -p .github
             printf '%s\n' "$today" > .github/daily-activity.txt
             git add -- .github/daily-activity.txt
-
-            if [[ "$CARDS_READY" == "true" ]]; then
-              mkdir -p profile
-              for card in stats-light.svg stats-dark.svg top-langs-light.svg top-langs-dark.svg; do
-                cp "$PROFILE_CARDS_DIR/$card" "profile/$card"
-                git add -- "profile/$card"
-              done
-            fi
 
             if git diff --cached --quiet; then
               echo "Already committed for $today; skipping."
