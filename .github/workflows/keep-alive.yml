@@ -25,7 +25,6 @@ jobs:
     timeout-minutes: 10
     env:
       DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-      PROFILE_CARDS_DIR: ${{ runner.temp }}/profile-cards
     steps:
       - name: Check out the default branch
         uses: actions/checkout@v7.0.1
@@ -98,6 +97,7 @@ jobs:
 
       - name: Update the daily date and cards in one commit
         env:
+          PROFILE_CARDS_DIR: ${{ runner.temp }}/profile-cards
           CARDS_READY: ${{ steps.stats_light.outcome == 'success' && steps.stats_dark.outcome == 'success' && steps.langs_light.outcome == 'success' && steps.langs_dark.outcome == 'success' }}
         shell: bash
         run: |
