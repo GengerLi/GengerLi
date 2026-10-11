@@ -33,6 +33,8 @@ jobs:
 
       - name: Check whether the daily cards need updating
         id: refresh
+        env:
+          FORCE_REFRESH: ${{ github.event_name == 'push' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -40,7 +42,8 @@ jobs:
           git reset --hard "origin/$DEFAULT_BRANCH"
           today="$(TZ=Asia/Shanghai date +%F)"
           needs_update=true
-          if [[ -f .github/daily-activity.txt ]] && [[ "$(cat .github/daily-activity.txt)" == "$today" ]] \
+          if [[ "${FORCE_REFRESH:-false}" != "true" ]] \
+            && [[ -f .github/daily-activity.txt ]] && [[ "$(cat .github/daily-activity.txt)" == "$today" ]] \
             && [[ -s profile/stats-light.svg && -s profile/stats-dark.svg ]] \
             && [[ -s profile/top-langs-light.svg && -s profile/top-langs-dark.svg ]]; then
             needs_update=false
@@ -54,7 +57,7 @@ jobs:
         uses: stats-organization/github-readme-stats-action@2c498845f71017821efaad14293ebc736156ef21 # v2
         with:
           card: stats
-          options: username=GengerLi&show_icons=true&hide_rank=true&hide_border=true&card_width=420&locale=cn&title_color=5B65E8&icon_color=5B65E8&text_color=475569&bg_color=F6F8FA
+          options: username=GengerLi&show_icons=true&hide_rank=true&hide_border=true&disable_animations=true&card_width=420&locale=cn&title_color=5B65E8&icon_color=5B65E8&text_color=475569&bg_color=F6F8FA
           path: ${{ runner.temp }}/profile-cards/stats-light.svg
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_error: true
@@ -66,7 +69,7 @@ jobs:
         uses: stats-organization/github-readme-stats-action@2c498845f71017821efaad14293ebc736156ef21 # v2
         with:
           card: stats
-          options: username=GengerLi&show_icons=true&hide_rank=true&hide_border=true&card_width=420&locale=cn&theme=tokyonight
+          options: username=GengerLi&show_icons=true&hide_rank=true&hide_border=true&disable_animations=true&card_width=420&locale=cn&theme=tokyonight
           path: ${{ runner.temp }}/profile-cards/stats-dark.svg
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_error: true
@@ -78,7 +81,7 @@ jobs:
         uses: stats-organization/github-readme-stats-action@2c498845f71017821efaad14293ebc736156ef21 # v2
         with:
           card: top-langs
-          options: username=GengerLi&layout=compact&langs_count=6&hide_border=true&card_width=420&locale=cn&title_color=5B65E8&text_color=475569&bg_color=F6F8FA
+          options: username=GengerLi&layout=compact&langs_count=6&hide_border=true&disable_animations=true&card_width=300&locale=cn&title_color=5B65E8&text_color=475569&bg_color=F6F8FA
           path: ${{ runner.temp }}/profile-cards/top-langs-light.svg
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_error: true
@@ -90,7 +93,7 @@ jobs:
         uses: stats-organization/github-readme-stats-action@2c498845f71017821efaad14293ebc736156ef21 # v2
         with:
           card: top-langs
-          options: username=GengerLi&layout=compact&langs_count=6&hide_border=true&card_width=420&locale=cn&theme=tokyonight
+          options: username=GengerLi&layout=compact&langs_count=6&hide_border=true&disable_animations=true&card_width=300&locale=cn&theme=tokyonight
           path: ${{ runner.temp }}/profile-cards/top-langs-dark.svg
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_error: true
