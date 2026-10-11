@@ -1,22 +1,65 @@
-name: Keep Alive
+name: Daily Commit
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+    # 01:17 UTC = 09:17 Asia/Shanghai. GitHub may delay scheduled runs.
+    - cron: "17 1 * * *"
   workflow_dispatch:
+  # Verify the workflow when its configuration is published or updated.
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/keep-alive.yml
 
 permissions:
   contents: write
 
+concurrency:
+  group: daily-profile-commit
+  cancel-in-progress: false
+
 jobs:
   commit:
+    if: github.repository == 'GengerLi/GengerLi' && github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out the default branch
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
 
-      - name: Empty commit
+      - name: Update the daily activity date and commit once
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit --allow-empty -m "chore: keep alive"
-          git push
+          set -euo pipefail
+          git config user.name "GengerLi"
+          git config user.email "190289293+GengerLi@users.noreply.github.com"
+
+          for attempt in 1 2 3; do
+            # This checkout is disposable. Refresh it before each attempt so a
+            # simultaneous push never causes another person's work to be lost.
+            git fetch origin "$DEFAULT_BRANCH"
+            git reset --hard "origin/$DEFAULT_BRANCH"
+
+            today="$(TZ=Asia/Shanghai date +%F)"
+            mkdir -p .github
+            printf '%s\n' "$today" > .github/daily-activity.txt
+            git add -- .github/daily-activity.txt
+
+            if git diff --cached --quiet; then
+              echo "Already committed for $today; skipping."
+              exit 0
+            fi
+
+            git commit -m "chore: daily activity $today"
+            if git push origin "HEAD:refs/heads/$DEFAULT_BRANCH"; then
+              exit 0
+            fi
+            echo "Push failed on attempt $attempt; retrying from the latest branch."
+          done
+
+          echo "Unable to push the daily commit after three attempts." >&2
+          exit 1
